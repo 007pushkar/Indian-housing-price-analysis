@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-
+df = pd.read_csv("small_data.csv")
 st.title("🏠 Real Estate Investment Advisor")
 
 # Load models
