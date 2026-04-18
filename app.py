@@ -1,23 +1,53 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
-df = pd.read_csv("small_data.csv")
+from sklearn.linear_model import LogisticRegression, LinearRegression
+
 st.title("🏠 Real Estate Investment Advisor")
 
-# Load models
-clf = joblib.load("classification_model.pkl")
-reg = joblib.load("regression_model.pkl")
+@st.cache_data
+def load_data():
+    df = pd.read_csv("https://raw.githubusercontent.com/your-username/your-repo/main/small_data.csv")
+    return df
 
-# Inputs
+@st.cache_resource
+def train_models(df):
+    df = pd.get_dummies(df, drop_first=True)
+
+    X = df.drop(['Good_Investment', 'Future_Price'], axis=1)
+    y_c = df['Good_Investment']
+    y_r = df['Future_Price']
+
+    clf = LogisticRegression(max_iter=1000)
+    reg = LinearRegression()
+
+    clf.fit(X, y_c)
+    reg.fit(X, y_r)
+
+    return clf, reg, X.columns
+
+# Load data
+df = load_data()
+
+# Train model
+clf, reg, columns = train_models(df)
+
+# USER INPUT (simple demo)
 bhk = st.number_input("BHK", 1, 10)
 size = st.number_input("Size (SqFt)")
 
 if st.button("Predict"):
-    data = np.array([[bhk, size]])
+    input_df = pd.DataFrame([[bhk, size]], columns=['BHK', 'Size_in_SqFt'])
 
-    pred_class = clf.predict(data)
-    pred_price = reg.predict(data)
+    # Add missing columns
+    for col in columns:
+        if col not in input_df.columns:
+            input_df[col] = 0
+
+    input_df = input_df[columns]
+
+    pred_class = clf.predict(input_df)
+    pred_price = reg.predict(input_df)
 
     st.success(f"Good Investment: {pred_class[0]}")
-    st.success(f"Future Price: {pred_price[0]}")
+    st.success(f"Future Price: ₹ {round(pred_price[0], 2)} Lakhs")
