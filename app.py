@@ -7,7 +7,7 @@ st.title("🏠 Real Estate Investment Advisor")
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("https://raw.githubusercontent.com/your-username/your-repo/main/small_data.csv")
+    df = pd.read_csv("small_data.csv")
     return df
 
 @st.cache_resource
