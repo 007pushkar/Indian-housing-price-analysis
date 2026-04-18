@@ -5,49 +5,67 @@ from sklearn.linear_model import LogisticRegression, LinearRegression
 
 st.title("🏠 Real Estate Investment Advisor")
 
+# -----------------------------
+# LOAD SMALL DATA (INLINE SAMPLE)
+# -----------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv("small_data.csv")
+    # Small synthetic dataset (no GitHub, no CSV issues)
+    data = {
+        "BHK": [1,2,3,2,3,4,2,3,1,4],
+        "Size_in_SqFt": [500,800,1200,900,1500,2000,850,1300,600,1800],
+        "Price_in_Lakhs": [20,35,60,40,75,120,38,70,25,110]
+    }
+    df = pd.DataFrame(data)
+
+    # Create targets
+    median_price = df['Price_in_Lakhs'].median()
+
+    df['Good_Investment'] = np.where(
+        (df['Price_in_Lakhs'] <= median_price) &
+        (df['BHK'] >= 2),
+        1, 0
+    )
+
+    r = 0.08
+    t = 5
+    df['Future_Price'] = df['Price_in_Lakhs'] * ((1 + r) ** t)
+
     return df
 
-@st.cache_resource
-def train_models(df):
-    df = pd.get_dummies(df, drop_first=True)
 
-    X = df.drop(['Good_Investment', 'Future_Price'], axis=1)
+# -----------------------------
+# TRAIN MODEL
+# -----------------------------
+@st.cache_resource
+def train_model(df):
+    X = df[['BHK', 'Size_in_SqFt']]
     y_c = df['Good_Investment']
     y_r = df['Future_Price']
 
-    clf = LogisticRegression(max_iter=1000)
+    clf = LogisticRegression()
     reg = LinearRegression()
 
     clf.fit(X, y_c)
     reg.fit(X, y_r)
 
-    return clf, reg, X.columns
+    return clf, reg
 
-# Load data
+
 df = load_data()
+clf, reg = train_model(df)
 
-# Train model
-clf, reg, columns = train_models(df)
-
-# USER INPUT (simple demo)
-bhk = st.number_input("BHK", 1, 10)
-size = st.number_input("Size (SqFt)")
+# -----------------------------
+# USER INPUT
+# -----------------------------
+bhk = st.slider("BHK", 1, 5, 2)
+size = st.slider("Size (SqFt)", 400, 2500, 800)
 
 if st.button("Predict"):
-    input_df = pd.DataFrame([[bhk, size]], columns=['BHK', 'Size_in_SqFt'])
+    input_data = np.array([[bhk, size]])
 
-    # Add missing columns
-    for col in columns:
-        if col not in input_df.columns:
-            input_df[col] = 0
+    pred_class = clf.predict(input_data)[0]
+    pred_price = reg.predict(input_data)[0]
 
-    input_df = input_df[columns]
-
-    pred_class = clf.predict(input_df)
-    pred_price = reg.predict(input_df)
-
-    st.success(f"Good Investment: {pred_class[0]}")
-    st.success(f"Future Price: ₹ {round(pred_price[0], 2)} Lakhs")
+    st.success(f"Good Investment: {'Yes' if pred_class==1 else 'No'}")
+    st.success(f"Future Price (5 yrs): ₹ {round(pred_price,2)} Lakhs")
